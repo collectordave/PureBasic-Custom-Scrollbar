@@ -41,6 +41,12 @@ Module CGScrollBar01
     Window_ID.i
     Gadget_ID.i
     BackColour.i
+    GadgetColour.i
+    TrackColour.i
+    ButtonColour.i
+    ArrowColour.i
+    imgTrack.i
+    imgSlider.i
     Enabled.i
     Entered.i
     Width.i
@@ -55,7 +61,54 @@ Module CGScrollBar01
   EndStructure
   Global Dim MyGadgetArray.MyGadget(0) 
   Global Currentgadget.i,MouseMoveSelect.i,RepeatAction.i,ActionToRepeat.i
+  
+  Procedure GetWindowBackgroundColor(hwnd=0) ;hwnd only used in Linux, ignored in Win/Mac
+    
+    CompilerSelect #PB_Compiler_OS
+     
+      CompilerCase #PB_OS_Windows 
+        Protected color = GetSysColor_(#COLOR_WINDOW)
+        If color = $FFFFFF Or color=0
+          color = GetSysColor_(#COLOR_BTNFACE)
+        EndIf
+        ProcedureReturn color
+     
+      CompilerCase #PB_OS_Linux   ;thanks to uwekel http://www.purebasic.fr/english/viewtopic.php?p=405822
+        Protected *style.GtkStyle, *color.GdkColor
+        *style = gtk_widget_get_style_(hwnd) ;GadgetID(Gadget))
+        *color = *style\bg[0]                ;0=#GtkStateNormal
+        ProcedureReturn RGB(*color\red >> 8, *color\green >> 8, *color\blue >> 8)
+     
+      CompilerCase #PB_OS_MacOS   ;thanks to wilbert http://purebasic.fr/english/viewtopic.php?f=19&t=55719&p=497009
+        Protected.i color, Rect.NSRect, Image, NSColor = CocoaMessage(#Null, #Null, "NSColor windowBackgroundColor")
+        If NSColor
+          Rect\size\width = 1
+          Rect\size\height = 1
+          Image = CreateImage(#PB_Any, 1, 1)
+          StartDrawing(ImageOutput(Image))
+          CocoaMessage(#Null, NSColor, "drawSwatchInRect:@", @Rect)
+          color = Point(0, 0)
+          StopDrawing()
+          FreeImage(Image)
+          ProcedureReturn color
+        Else
+          ProcedureReturn -1
+        EndIf
+    CompilerEndSelect
+  EndProcedure  
+  
+  Procedure RGB2RGBA(Colour.i)
  
+  Protected.i Red, Green, Blue
+
+  Red   = Red(Colour)
+  Green = Green(Colour)
+  Blue  = Blue(Colour)
+      
+  ProcedureReturn RGBA(Red, Green, Blue, 255)
+  
+EndProcedure
+  
   Procedure.i GreyColour(Colour.i)
     
     Define NChrome.i,RetColour.i
@@ -93,148 +146,105 @@ Module CGScrollBar01
   
   EndProcedure
   
-  Procedure   DrawLeft()
-  
-    Define Height.i,Width.i
-  
-    StartVectorDrawing(CanvasVectorOutput(MyGadgetArray(Currentgadget)\Gadget_ID))
-  
-    If MyGadgetArray(Currentgadget)\Entered = #False
-      VectorSourceColor(GreyColour(RGBA(255,0,0,255)))
-    Else
-      VectorSourceColor(RGBA(255,0,0,255))
-    EndIf
-
-    If MyGadgetArray(Currentgadget)\Vertical = #True
-    
-      Height = VectorOutputWidth()
-      Width = VectorOutputHeight()
-      RotateCoordinates((Height/2),(Height/2),90)
-    
-    Else 
-    
-      Height = VectorOutputHeight()
-      Width = VectorOutputWidth()
-    
-    EndIf     
-  
-    ;MainButton
-    AddPathCircle(Height/2,Height/2,Height/2)
-    FillPath()
-      
-    ;Arrow
-    If MyGadgetArray(Currentgadget)\Entered = #False
-      VectorSourceColor(GreyColour(RGBA(255,255,255,255)))
-    Else
-      VectorSourceColor(RGBA(255,255,255,255))
-    EndIf   
-
-    MovePathCursor(Height * 0.7, Height * 0.2)
-    AddPathLine(Height * 0.1, Height * 0.5)
-    AddPathLine(Height * 0.7, Height * 0.8)
-    ClosePath()
-    FillPath()
-      
-    ;Start Of Track;
-    If MyGadgetArray(Currentgadget)\Entered = #False
-      VectorSourceColor(GreyColour(RGBA(255,0,0,255)))
-    Else
-      VectorSourceColor(RGBA(255,0,0,255))
-    EndIf
-    AddPathCircle(Height * 1.5,Height * 0.5,Height * 0.4,90,270)
-    StrokePath(Height /10)
-  StopVectorDrawing()
-  
-EndProcedure 
-
-  Procedure   DrawTrack()
-  
-    Define Height.i,Width.i
-
-    StartVectorDrawing(CanvasVectorOutput(MyGadgetArray(Currentgadget)\Gadget_ID))
-  
-    If MyGadgetArray(Currentgadget)\Vertical = #True
-    
-      Height = VectorOutputWidth()
-      Width = VectorOutputHeight()
-      RotateCoordinates((Height/2),(Height/2),90)
+  Procedure.i CreateTrack()
+       
+    Define Width.d,Height.d,TempTrackImage.i,BackC.i
    
-    Else 
-    
-      Height = VectorOutputHeight()
-      Width = VectorOutputWidth()
-    
-    EndIf   
-    
-    If MyGadgetArray(Currentgadget)\Entered = #False
-      VectorSourceColor(GreyColour(RGBA(255,0,0,255)))
-    Else
-      VectorSourceColor(RGBA(255,0,0,255))
-    EndIf   
-    MovePathCursor(Height * 1.5 ,Height * 0.9)
-    AddPathLine(Width - (Height * 1.5),Height * 0.9)
-    MovePathCursor(Height * 1.5,Height * 0.1)
-    AddPathLine(Width -(Height * 1.5),Height * 0.1)     
-    StrokePath(Height /10)
-    StopVectorDrawing()
+    Width = MyGadgetArray(Currentgadget)\Width
+    Height = MyGadgetArray(Currentgadget)\Height
+      
+    Define TempTrackImage  
+    TempTrackImage = CreateImage(#PB_Any,Width, Height, 32,#PB_Image_Transparent)
+    If TempTrackImage
+ 
+      ;Draw The Gadget
+      StartVectorDrawing(ImageVectorOutput(TempTrackImage))
+      
+      ;Background
+      VectorSourceColor(MyGadgetArray(CurrentGadget)\BackColour)
+        AddPathBox(0,0,Width,Height)
+      FillPath()
+      
+      VectorSourceColor(MyGadgetArray(CurrentGadget)\GadgetColour)
 
-  EndProcedure
-
-  Procedure   DrawRight()
-    
-    Define Height.i,Width.i    
-    Define Offset.i
-   
-    StartVectorDrawing(CanvasVectorOutput(MyGadgetArray(Currentgadget)\Gadget_ID))
-      If MyGadgetArray(Currentgadget)\Entered = #False
-        VectorSourceColor(GreyColour(RGBA(255,0,0,255)))
-      Else
-        VectorSourceColor(RGBA(255,0,0,255))
-      EndIf   
+      ;DrawTrack
+      MovePathCursor(Height * 0.5 ,Height)
+      AddPathLine(Width - (Height * 0.5),Height)
+      MovePathCursor(Height * 0.5 ,0)
+      AddPathLine(Width -(Height * 0.5),0)     
+      StrokePath(Height * 0.1)
      
-      If MyGadgetArray(Currentgadget)\Vertical = #True
+      ;Left Button
+      AddPathCircle(Height/2,Height/2,Height/2)
+      FillPath()
+      
+      ;Arrow
+      VectorSourceColor(RGBA(255,255,255,255))     
+      MovePathCursor(Height * 0.7, Height * 0.2)
+      AddPathLine(Height * 0.1, Height * 0.5)
+      AddPathLine(Height * 0.7, Height * 0.8)
+      ClosePath()
+      FillPath()
     
-        Height = VectorOutputWidth()
-        Width = VectorOutputHeight()
-        RotateCoordinates((Height/2),(Height/2),90)
-     
-      Else 
-    
-        Height = VectorOutputHeight()
-        Width = VectorOutputWidth()
-    
-      EndIf     
-  
+      ;Right Button
       Offset = Width - Height * 1.5
         
       ;MainButton
+      VectorSourceColor(MyGadgetArray(CurrentGadget)\GadgetColour)      
       AddPathCircle(Offset + Height,Height/2,Height/2)
       FillPath()
       
       ;Arrow
-      If MyGadgetArray(Currentgadget)\Entered = #False
-        VectorSourceColor(GreyColour(RGBA(255,255,255,255)))
-      Else
-        VectorSourceColor(RGBA(255,255,255,255))
-      EndIf  
+      VectorSourceColor(RGBA(255,255,255,255))
       MovePathCursor(Offset + Height * 0.8, Height * 0.2)
       AddPathLine   (Offset + Height * 0.8, Height * 0.8)
       AddPathLine   (Offset + Height * 1.4, Height * 0.5)
       ClosePath     ()
       FillPath      ()
       
-      ;Start Of Track
-      If MyGadgetArray(Currentgadget)\Entered = #False
-        VectorSourceColor(GreyColour(RGBA(255,0,0,255)))
-      Else
-        VectorSourceColor(RGBA(255,0,0,255))
-      EndIf   
-      AddPathCircle(Offset,Height * 0.5,Height * 0.4,270,90)
-      StrokePath(Height /10)
-    StopVectorDrawing()
+    EndIf
+      
+    ProcedureReturn TempTrackImage
+      
+   EndProcedure
    
-  EndProcedure
+   Procedure.i CreateSlider()
     
+    Define Height.d,TempSlider.i
+
+    Height = MyGadgetArray(Currentgadget)\Height
+     
+    TempSlider = CreateImage(#PB_Any,Height, Height, 32,#PB_Image_Transparent)
+    If TempSlider
+      
+      StartVectorDrawing(ImageVectorOutput(TempSlider))
+       
+        ;Background
+        VectorSourceColor(MyGadgetArray(CurrentGadget)\BackColour)
+          AddPathBox(0,0,Width,Height)
+        FillPath()      
+      
+        VectorSourceColor(MyGadgetArray(CurrentGadget)\ButtonColour)       
+        AddPathCircle(Height * 0.5, Height * 0.5, Height * 0.5)   
+        FillPath()
+      
+      StopVectorDrawing()
+   EndIf   
+   
+   ProcedureReturn TempSlider
+
+  EndProcedure   
+  
+  Procedure Cleargadget()
+    
+    ;Clear Current gadget
+    StartDrawing(CanvasOutput(MyGadgetArray(Currentgadget)\Gadget_ID))
+      DrawingMode(#PB_2DDrawing_AllChannels)
+      Box(0, 0, OutputWidth(),OutputHeight(), MyGadgetArray.MyGadget(CurrentGadget)\BackColour)
+    StopDrawing()
+      
+  EndProcedure
+  
   Procedure DrawGadget()
   ;{ ==Procedure Header Comment==============================
   ;        Name/title: DrawGadget
@@ -243,21 +253,16 @@ EndProcedure
   ; 
   ; ====================================================
   ;}    
+    Define Height.i,Width.i,OffSet.d,SAlpha.i,Value.i
     
-    ;Clear Current gadget
-    StartDrawing(CanvasOutput(MyGadgetArray(Currentgadget)\Gadget_ID))
-      DrawingMode(#PB_2DDrawing_AllChannels)
-      Box(0, 0, OutputWidth(),OutputHeight(), MyGadgetArray.MyGadget(CurrentGadget)\BackColour)
-    StopDrawing()
-    DrawLeft()
-    DrawTrack()
-    DrawRight()
 
-  EndProcedure 
-  
-  Procedure DrawSlider(Value.d)
+    Value = MyGadgetArray(CurrentGadget)\Value
     
-    Define Height.i,Width.i,OffSet.d  
+      If MyGadgetArray(Currentgadget)\Entered = #False
+        SAlpha = 100
+      Else
+        SAlpha = 255
+      EndIf
 
     StartVectorDrawing(CanvasVectorOutput(MyGadgetArray(Currentgadget)\Gadget_ID)) 
   
@@ -273,22 +278,18 @@ EndProcedure
         Width = VectorOutputWidth()
     
       EndIf 
-      If MyGadgetArray(Currentgadget)\Entered = #False
-        VectorSourceColor(GreyColour(RGBA(0,255,0,255)))
-      Else
-        VectorSourceColor(RGBA(0,255,0,255))
-      EndIf   
 
-      Offset = (((Width - (Height * 3))/100) * Value) + Height * 1.5
-      MyGadgetArray(Currentgadget)\Slidercentre = Offset
+      Offset = (((Width - (Height * 3))/100) * Value) + Height
+      MyGadgetArray(Currentgadget)\Slidercentre = Offset + (Height * 0.5)
       MyGadgetArray(Currentgadget)\Ratio = (Width - (Height * 3))/100
-      AddPathCircle(Offset,Height * 0.5,Height * 0.35)
-      FillPath()
+      MovePathCursor(0,0)
+      DrawVectorImage(ImageID(MyGadgetArray(Currentgadget)\imgTrack),SAlpha)     
+      MovePathCursor(Offset,0)
+      DrawVectorImage(ImageID(MyGadgetArray(Currentgadget)\imgSlider),255)
+      StopVectorDrawing() 
       
-    StopVectorDrawing() 
-
-  EndProcedure
-  
+  EndProcedure 
+   
   Procedure AddGadget(ThisWindow.i,ThisGadget.i)
  ;{ ==Procedure Header Comment==============================
 ;        Name/title: AddGadget
@@ -322,9 +323,6 @@ EndProcedure
         
       Case 0
         RepeatAction = #False 
-        If IsThread(thread)
-          KillThread(thread)
-        EndIf
         ProcedureReturn
       Case 1         
         Currentvalue = MyGadgetArray(CurrentGadget)\Value - 1
@@ -335,23 +333,16 @@ EndProcedure
     If Currentvalue < MyGadgetArray(CurrentGadget)\Minimum
       Currentvalue = MyGadgetArray(CurrentGadget)\Minimum
       RepeatAction = #False
-      If IsThread(thread)
-        KillThread(thread)
-      EndIf     
       ProcedureReturn
     EndIf
     If Currentvalue > MyGadgetArray(CurrentGadget)\Maximum
       Currentvalue = MyGadgetArray(CurrentGadget)\Maximum
       RepeatAction = #False     
-      If IsThread(thread)
-        KillThread(thread)
-      EndIf     
       ProcedureReturn      
     EndIf
     MyGadgetArray(CurrentGadget)\Value = Currentvalue
     SendEvents(#CGScrollChange)      
     DrawGadget()
-    DrawSlider(MyGadgetArray(CurrentGadget)\Value)
     
   EndProcedure
  
@@ -403,27 +394,23 @@ EndProcedure
           MyGadgetArray(CurrentGadget)\Value = Currentvalue
           SendEvents(#CGScrollChange)      
           DrawGadget()
-          DrawSlider(MyGadgetArray(CurrentGadget)\Value)       
         EndIf     
           
       Case #PB_EventType_MouseEnter
         
         SetActiveGadget(MyGadgetArray(CurrentGadget)\Gadget_ID)
         MyGadgetArray(CurrentGadget)\Entered = #True
+        Cleargadget()
         DrawGadget()
-        DrawSlider(MyGadgetArray(CurrentGadget)\Value)
         
       Case #PB_EventType_MouseLeave 
         
         SetActiveGadget(-1)
         RepeatAction = #False
-        If IsThread(thread)
-          KillThread(thread)
-        EndIf
         MouseMoveSelect = #False
         MyGadgetArray(CurrentGadget)\Entered = #False
-        DrawGadget()        
-        DrawSlider(MyGadgetArray(CurrentGadget)\Value)      
+        Cleargadget()
+        DrawGadget() 
         
       Case #PB_EventType_MouseMove 
         
@@ -445,8 +432,7 @@ EndProcedure
           MyGadgetArray(CurrentGadget)\Value = currentvalue
           SendEvents(#CGScrollChange)
           Drawgadget()
-          DrawSlider(currentvalue)
-          
+ 
         EndIf
         
       Case #PB_EventType_LeftButtonDown
@@ -472,11 +458,7 @@ EndProcedure
       Case #PB_EventType_LeftButtonUp
         
         RepeatAction = #False
-        If IsThread(thread)
-          KillThread(thread)
-        EndIf
-        drawgadget()
-        DrawSlider(MyGadgetArray(CurrentGadget)\Value)      
+        Drawgadget()
    
       Case #PB_EventType_LeftClick 
           
@@ -533,7 +515,6 @@ EndProcedure
 
           EndSelect  ;YPos           
           Drawgadget()
-          DrawSlider(MyGadgetArray(CurrentGadget)\Value)
         EndIf
           
       EndSelect
@@ -590,32 +571,34 @@ EndProcedure
       MyGadgetArray.MyGadget(CurrentGadget)\BackColour = Point(x, y)
     StopDrawing()
     
-    ;Set Colour Of Canvas To Background
-    StartDrawing(CanvasOutput(ThisGadget))
-      DrawingMode(#PB_2DDrawing_AllChannels)
-      Box(0, 0, OutputWidth(), OutputHeight(), MyGadgetArray.MyGadget(CurrentGadget)\BackColour)
-    StopDrawing()
-      
+    MyGadgetArray.MyGadget(CurrentGadget)\BackColour = GetWindowBackgroundColor(WindowID(ThisWindow))
+    MyGadgetArray.MyGadget(CurrentGadget)\BackColour = RGB2RGBA(MyGadgetArray.MyGadget(CurrentGadget)\BackColour)
+    
     ;Save Settings For This Gadget
-    MyGadgetArray.MyGadget(CurrentGadget)\Vertical = Vertical  
-    MyGadgetArray.MyGadget(CurrentGadget)\Width = Width
-    MyGadgetArray.MyGadget(CurrentGadget)\Height = Height
-    MyGadgetArray.MyGadget(CurrentGadget)\Minimum = Min
-    MyGadgetArray.MyGadget(CurrentGadget)\Maximum = Max
-    MyGadgetArray.MyGadget(CurrentGadget)\Page = Page   
-    MyGadgetArray.MyGadget(CurrentGadget)\Value = 0
-
+    MyGadgetArray(CurrentGadget)\Vertical = Vertical  
+    MyGadgetArray(CurrentGadget)\Width = Width
+    MyGadgetArray(CurrentGadget)\Height = Height
+    MyGadgetArray(CurrentGadget)\Minimum = Min
+    MyGadgetArray(CurrentGadget)\Maximum = Max
+    MyGadgetArray(CurrentGadget)\Page = Page   
+    MyGadgetArray(CurrentGadget)\Value = 50
+    MyGadgetArray(CurrentGadget)\GadgetColour = RGBA(255,0,0,255)
+    MyGadgetArray(CurrentGadget)\ButtonColour = RGBA(0,255,0,255)
+    MyGadgetArray(CurrentGadget)\TrackColour = RGBA(236,236,236,255)
+    MyGadgetArray(CurrentGadget)\ArrowColour = RGBA(255,255,255,255)
+    MyGadgetArray(CurrentGadget)\imgTrack = CreateTrack()
+    MyGadgetArray(CurrentGadget)\imgSlider = CreateSlider()
+    
     ;Draw the actual gadget
     DrawGadget()
-    DrawSlider(MyGadgetArray.MyGadget(CurrentGadget)\Value)
     
     ProcedureReturn ThisGadget 
     
-  EndProcedure 
+  EndProcedure
     
 EndModule
 ; IDE Options = PureBasic 5.51 (Windows - x64)
-; CursorPosition = 28
-; FirstLine = 6
-; Folding = lAwx
+; CursorPosition = 460
+; FirstLine = 308
+; Folding = Fug7
 ; EnableXP

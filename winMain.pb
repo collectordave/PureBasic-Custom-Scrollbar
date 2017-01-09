@@ -1,6 +1,6 @@
 ﻿
 IncludeFile "CGScrollBar00.pbi"
-IncludeFile "CGScrollBar01.pbi"
+IncludeFile "CGScrollBar02.pbi"
 
 Enumeration FormGadget
   #btnRedraw  
@@ -14,9 +14,9 @@ EndEnumeration
 Global Window_0,CustomGadget3.i,CustomGadget4.i
 
   Window_0 = OpenWindow(#PB_Any, 0, 5, 580, 400, "ScrollBar Test", #PB_Window_SystemMenu)
-  CGScrollBar00::New(#VScroll,490, 10, 300,20,0,100,5,#CGSCRollVertical)
-  CGScrollBar01::New(#HScroll,40, 310, 450,40,0,100,15)
-  StringGadget(#strVertValue, 520, 140, 50, 20, "")
+  CGScrollBar02::New(#VScroll,490, 10, 300,40,0,100,5,#CGSCRollVertical)
+  CGScrollBar00::New(#HScroll,40, 310, 450,30,0,100,15)
+  StringGadget(#strVertValue, 530, 140, 40, 20, "")
   StringGadget(#strHorzValue, 220, 360, 50, 20, "")
   CanvasGadget(#cnvScrollBits, 40, 10, 450, 300)
   
@@ -37,23 +37,23 @@ Global Window_0,CustomGadget3.i,CustomGadget4.i
 
           Select EventType()
               
-            Case CGScrollBar01::#CGScrollChange
+            Case CGScrollBar02::#CGScrollChange
               
               SetGadgetText(#strVertValue,Str(EventData()))
               
-            Case CGScrollBar01::#CGScrollSmallRise
+            Case CGScrollBar02::#CGScrollSmallRise
               
               SetGadgetText(#strVertValue,Str(EventData()))
               
-            Case CGScrollBar01::#CGScrollLargeRise
+            Case CGScrollBar02::#CGScrollLargeRise
               
               SetGadgetText(#strVertValue,Str(EventData())) 
               
-            Case CGScrollBar01::#CGScrollLargeFall
+            Case CGScrollBar02::#CGScrollLargeFall
               
               SetGadgetText(#strVertValue,Str(EventData()))
               
-            Case CGScrollBar01::#CGScrollSmallFall
+            Case CGScrollBar02::#CGScrollSmallFall
               
               SetGadgetText(#strVertValue,Str(EventData()))
               
@@ -91,6 +91,6 @@ Global Window_0,CustomGadget3.i,CustomGadget4.i
   
 ForEver
 ; IDE Options = PureBasic 5.51 (Windows - x64)
-; CursorPosition = 61
-; FirstLine = 55
+; CursorPosition = 81
+; FirstLine = 61
 ; EnableXP

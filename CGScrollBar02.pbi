@@ -1,7 +1,7 @@
 ﻿
 #CGScrollVertical = 1
 
-DeclareModule CGScrollBar00
+DeclareModule CGScrollBar02
   
   ;{ ==Gadget Event Enumerations=================================
 ;        Name/title: Enumerations
@@ -34,7 +34,7 @@ DeclareModule CGScrollBar00
   
 EndDeclareModule
 
-Module CGScrollBar00
+Module CGScrollBar02
 
   ;The Main Gadget Structure
   Structure MyGadget
@@ -63,49 +63,63 @@ Module CGScrollBar00
   Global Currentgadget.i,MouseMoveSelect.i,RepeatAction.i,ActionToRepeat.i
   
   Procedure GetWindowBackgroundColor(hwnd=0) ;hwnd only used in Linux, ignored in Win/Mac
-  CompilerSelect #PB_Compiler_OS
+    
+    CompilerSelect #PB_Compiler_OS
      
-    CompilerCase #PB_OS_Windows 
-      Protected color = GetSysColor_(#COLOR_WINDOW)
-      If color = $FFFFFF Or color=0: color = GetSysColor_(#COLOR_BTNFACE): EndIf
-      ProcedureReturn color
-     
-    CompilerCase #PB_OS_Linux   ;thanks to uwekel http://www.purebasic.fr/english/viewtopic.php?p=405822
-      Protected *style.GtkStyle, *color.GdkColor
-      *style = gtk_widget_get_style_(hwnd) ;GadgetID(Gadget))
-      *color = *style\bg[0]                ;0=#GtkStateNormal
-      ProcedureReturn RGB(*color\red >> 8, *color\green >> 8, *color\blue >> 8)
-     
-    CompilerCase #PB_OS_MacOS   ;thanks to wilbert http://purebasic.fr/english/viewtopic.php?f=19&t=55719&p=497009
-      Protected.i color, Rect.NSRect, Image, NSColor = CocoaMessage(#Null, #Null, "NSColor windowBackgroundColor")
-      If NSColor
-        Rect\size\width = 1
-        Rect\size\height = 1
-        Image = CreateImage(#PB_Any, 1, 1)
-        StartDrawing(ImageOutput(Image))
-        CocoaMessage(#Null, NSColor, "drawSwatchInRect:@", @Rect)
-        color = Point(0, 0)
-        StopDrawing()
-        FreeImage(Image)
+      CompilerCase #PB_OS_Windows 
+        Protected color = GetSysColor_(#COLOR_WINDOW)
+        If color = $FFFFFF Or color=0
+          color = GetSysColor_(#COLOR_BTNFACE)
+        EndIf
         ProcedureReturn color
-      Else
-        ProcedureReturn -1
-      EndIf
-  CompilerEndSelect
-EndProcedure 
+     
+      CompilerCase #PB_OS_Linux   ;thanks to uwekel http://www.purebasic.fr/english/viewtopic.php?p=405822
+        Protected *style.GtkStyle, *color.GdkColor
+        *style = gtk_widget_get_style_(hwnd) ;GadgetID(Gadget))
+        *color = *style\bg[0]                ;0=#GtkStateNormal
+        ProcedureReturn RGB(*color\red >> 8, *color\green >> 8, *color\blue >> 8)
+     
+      CompilerCase #PB_OS_MacOS   ;thanks to wilbert http://purebasic.fr/english/viewtopic.php?f=19&t=55719&p=497009
+        Protected.i color, Rect.NSRect, Image, NSColor = CocoaMessage(#Null, #Null, "NSColor windowBackgroundColor")
+        If NSColor
+          Rect\size\width = 1
+          Rect\size\height = 1
+          Image = CreateImage(#PB_Any, 1, 1)
+          StartDrawing(ImageOutput(Image))
+          CocoaMessage(#Null, NSColor, "drawSwatchInRect:@", @Rect)
+          color = Point(0, 0)
+          StopDrawing()
+          FreeImage(Image)
+          ProcedureReturn color
+        Else
+          ProcedureReturn -1
+        EndIf
+    CompilerEndSelect
+  EndProcedure  
 
-Procedure RGB2RGBA(Colour.i)
- 
-  Protected.i Red, Green, Blue
+  Procedure SetCurrentGadgetID(Gadget.i)
+  ;{ ==Procedure Header Comment==============================
+  ;        Name/title: GetgadgetID
+  ;       Description: Part of custom gadget template
+  ;                  : Procedure to return the MyGadgetArray() element number 
+  ;                  : for the gadget on which the event occurred
+  ; 
+  ; ==================================================== 
+  ;}     
+    Define iLoop.i
+    
+      For iLoop = 0 To ArraySize(MyGadgetArray()) -1
 
-  Red   = Red(Colour)
-  Green = Green(Colour)
-  Blue  = Blue(Colour)
+        If Gadget = MyGadgetArray(iLoop)\Gadget_ID
+
+          CurrentGadget = iLoop
+        Break
+        EndIf
       
-  ProcedureReturn RGBA(Red, Green, Blue, 255)
+      Next iLoop 
   
-EndProcedure
-
+  EndProcedure
+  
   Procedure.i ColourDarken (Color.i, Fact.d)
   
   ; [by Oma, 2016-04-21]
@@ -138,10 +152,10 @@ EndProcedure
     FillPath()
          
   EndProcedure
-
+  
   Procedure.i CreateTrack()
        
-    Define Width.d,Height.d,TempTrackImage.i,BackC.i
+    Define Width.d,Height.d,TempTrackImage.i
    
     Width = MyGadgetArray(Currentgadget)\Width
     Height = MyGadgetArray(Currentgadget)\Height
@@ -149,7 +163,8 @@ EndProcedure
     Define TempTrackImage  
     TempTrackImage = CreateImage(#PB_Any,Width, Height, 32,#PB_Image_Transparent)
     If TempTrackImage
- 
+   
+      
       ;Draw The Gadget
       StartVectorDrawing(ImageVectorOutput(TempTrackImage))
       
@@ -158,37 +173,42 @@ EndProcedure
         AddPathBox(0,0,Width,Height)
       FillPath()
       
-      VectorSourceColor(MyGadgetArray(CurrentGadget)\GadgetColour)
-
-      ;DrawTrack
-      MovePathCursor(Height,Height * 0.5)
-      AddPathLine(width-Height,Height * 0.5)
-      StrokePath(Height * 0.1)    
-     
+      ;Gadget
+      VectorSourceLinearGradient(0, 0,0,Height)
+      VectorSourceGradientColor(ColourDarken(MyGadgetArray(Currentgadget)\GadgetColour,0.8), 0.0)
+      VectorSourceGradientColor(MyGadgetArray(Currentgadget)\GadgetColour, 0.2)   
+      VectorSourceGradientColor(MyGadgetArray(Currentgadget)\GadgetColour, 0.8)         
+      VectorSourceGradientColor(ColourDarken(MyGadgetArray(Currentgadget)\GadgetColour,0.8), 1.0) 
+      MovePathCursor(height * 0.5,height * 0.5)
+      AddPathLine(width-(height * 0.5),height * 0.5)
+      StrokePath(height,#PB_Path_RoundEnd)    
+      
+      ;Draw the track
+      VectorSourceLinearGradient(0, 0,0,Height)
+      VectorSourceGradientColor(ColourDarken(MyGadgetArray(Currentgadget)\TrackColour,0.4), 0.0)
+      VectorSourceGradientColor(MyGadgetArray(Currentgadget)\TrackColour, 0.5)      
+      VectorSourceGradientColor(ColourDarken(MyGadgetArray(Currentgadget)\TrackColour,0.4), 1.0) 
+      MovePathCursor(height,Height * 0.5)
+      AddPathLine(Width-height,Height * 0.5)
+      StrokePath(Height * 0.8)
+      
       ;Left Button
-
-      AddPathBox(1, 1, Height-2,Height-2)
-      StrokePath(Height * 0.1)
-      ;Arrow
-      MovePathCursor(Height * 0.2, Height * 0.5)
-      AddPathLine(Height * 0.8, Height * 0.5)
-      MovePathCursor(Height * 0.2, Height * 0.5)  
-      AddPathLine(Height * 0.7, Height * 0.2)
-      MovePathCursor(Height * 0.2, Height * 0.5)  
-      AddPathLine(Height * 0.7, Height * 0.8)
-      StrokePath(Height * 0.05,#PB_Path_RoundEnd)
-    
+      VectorSourceCircularGradient(Height * 0.5, Height * 0.5, Height * 0.5) 
+      VectorSourceGradientColor(ColourDarken(MyGadgetArray(Currentgadget)\ButtonColour,0.1), 0.0)       
+      VectorSourceGradientColor(MyGadgetArray(Currentgadget)\ButtonColour, 1.0)
+      AddPathCircle(Height * 0.5, Height * 0.5, Height * 0.35)
+      FillPath() 
+      Arrow(Height * 0.25,Height * 0.25,Height * 0.5)
+      
       ;Right Button
-      AddPathBox(Width - Height + 1, 1, Height-2,Height-2)
-      StrokePath(Height * 0.1)
-      ;Arrow
-      MovePathCursor((Width - Height) + (Height * 0.8), Height * 0.5)
-      AddPathLine   ((Width - Height) +  (Height * 0.2), Height * 0.5)
-      MovePathCursor((Width - Height) + (Height * 0.8), Height * 0.5)
-      AddPathLine   ((Width - Height) + (Height * 0.3), Height * 0.2)     
-      MovePathCursor((Width - Height) + (Height * 0.8), Height * 0.5)
-      AddPathLine   ((Width - Height) + (Height * 0.3), Height * 0.8)      
-      StrokePath(Height * 0.05,#PB_Path_RoundEnd)
+      VectorSourceCircularGradient(Width - (Height * 0.5), Height * 0.5, Height * 0.5) 
+      VectorSourceGradientColor(ColourDarken(MyGadgetArray(Currentgadget)\ButtonColour,0.1), 0.0)       
+      VectorSourceGradientColor(MyGadgetArray(Currentgadget)\ButtonColour, 1.0)     
+      AddPathCircle(Width - (Height * 0.5), Height * 0.5, Height * 0.35)   
+      FillPath()
+      FlipCoordinatesX(Width * 0.5)
+      Arrow(Height * 0.25,Height * 0.25,Height * 0.5)
+
       StopVectorDrawing()
       
     EndIf
@@ -205,61 +225,26 @@ EndProcedure
      
     TempSlider = CreateImage(#PB_Any,Height, Height, 32,#PB_Image_Transparent)
     If TempSlider
-
-      StartVectorDrawing(ImageVectorOutput(TempSlider))
       
-        ;Background
-        VectorSourceColor(MyGadgetArray(CurrentGadget)\BackColour)
-          AddPathBox(0,0,Width,Height)
-        FillPath()     
-        
-        VectorSourceColor(MyGadgetArray(CurrentGadget)\ButtonColour)       
-          AddPathBox(0, 0, Height,Height)   
-        FillPath()
+      ;Set Correct BackColour for antialiasing
+      StartDrawing(ImageOutput(TempSlider))
+      DrawingMode(#PB_2DDrawing_Transparent)
+      Box(0, 0, Height, Height, RGBA(255, 255, 255, 0))
+      StopDrawing()      
+      
+      StartVectorDrawing(ImageVectorOutput(TempSlider))
+      VectorSourceCircularGradient(Height * 0.5, Height * 0.5, Height * 0.5) 
+      VectorSourceGradientColor(ColourDarken(MyGadgetArray(CurrentGadget)\ButtonColour,0.7), 0.0)       
+      VectorSourceGradientColor(MyGadgetArray(CurrentGadget)\ButtonColour, 1.0)     
+      AddPathCircle(Height * 0.5, Height * 0.5, Height * 0.5)   
+      FillPath()
       
       StopVectorDrawing()
    EndIf   
    
    ProcedureReturn TempSlider
 
-  EndProcedure  
-  
-  Procedure.i GreyColour(Colour.i)
-    
-    Define NChrome.i,RetColour.i
-    
-    NChrome = Round(Red(Colour) * 0.56 + Green(Colour) * 0.33 + Blue(Colour) * 0.11, 0)
-    RetColour = RGBA(NChrome,NChrome,NChrome,255)
-    ProcedureReturn RetColour
-
-  EndProcedure
-   
-  Procedure SetCurrentGadgetID(Gadget.i)
-  ;{ ==Procedure Header Comment==============================
-;        Name/title: GetgadgetID
-;       Description: Part of custom gadget template
-;                  : Procedure to return the MyGadgetArray() element number 
-;                  : for the gadget on which the event occurred
-; 
-; ====================================================
-;}     
-    Define iLoop.i
-    
-    ;If Currentgadget <> Gadget
-    
-      For iLoop = 0 To ArraySize(MyGadgetArray()) -1
-
-        If Gadget = MyGadgetArray(iLoop)\Gadget_ID
-
-          CurrentGadget = iLoop
-        Break
-        EndIf
-      
-      Next iLoop 
-
-    ;EndIf
-  
-  EndProcedure
+  EndProcedure 
   
   Procedure Cleargadget()
     
@@ -270,8 +255,7 @@ EndProcedure
     StopDrawing()
       
   EndProcedure
-  
-  
+    
   Procedure DrawGadget()
   ;{ ==Procedure Header Comment==============================
   ;        Name/title: DrawGadget
@@ -281,6 +265,7 @@ EndProcedure
   ; ====================================================
   ;}    
     Define Height.i,Width.i,OffSet.d,SAlpha.i,Value.i
+    
 
     Value = MyGadgetArray(CurrentGadget)\Value
     
@@ -315,7 +300,7 @@ EndProcedure
       StopVectorDrawing() 
       
   EndProcedure 
-  
+ 
   Procedure AddGadget(ThisWindow.i,ThisGadget.i)
  ;{ ==Procedure Header Comment==============================
 ;        Name/title: AddGadget
@@ -348,10 +333,9 @@ EndProcedure
     Select ActionToRepeat
         
       Case 0
+        ;Stop The Thread
         RepeatAction = #False 
-        If IsThread(thread)
-          KillThread(thread)
-        EndIf
+
         ProcedureReturn
       Case 1         
         Currentvalue = MyGadgetArray(CurrentGadget)\Value - 1
@@ -362,17 +346,12 @@ EndProcedure
     If Currentvalue < MyGadgetArray(CurrentGadget)\Minimum
       Currentvalue = MyGadgetArray(CurrentGadget)\Minimum
       RepeatAction = #False
-      If IsThread(thread)
-        KillThread(thread)
-      EndIf     
+    
       ProcedureReturn
     EndIf
     If Currentvalue > MyGadgetArray(CurrentGadget)\Maximum
       Currentvalue = MyGadgetArray(CurrentGadget)\Maximum
       RepeatAction = #False     
-      If IsThread(thread)
-        KillThread(thread)
-      EndIf     
       ProcedureReturn      
     EndIf
     MyGadgetArray(CurrentGadget)\Value = Currentvalue
@@ -396,7 +375,7 @@ EndProcedure
         EndIf
       EndIf
     
-      Delay(5) ;keep cpu use in check
+      Delay(1) ;keep cpu use in check
     Until RepeatAction = #False
 
   EndProcedure
@@ -444,8 +423,8 @@ EndProcedure
         MouseMoveSelect = #False
         MyGadgetArray(CurrentGadget)\Entered = #False
         Cleargadget()
-        DrawGadget()       
-        
+        DrawGadget()        
+
       Case #PB_EventType_MouseMove 
         
         If MyGadgetArray(CurrentGadget)\Vertical = #True
@@ -470,7 +449,7 @@ EndProcedure
         EndIf
         
       Case #PB_EventType_LeftButtonDown
-        
+
         If MyGadgetArray(CurrentGadget)\Vertical = #True
           YPos = GetGadgetAttribute(MyGadgetArray(CurrentGadget)\Gadget_ID,#PB_Canvas_MouseY )
         Else
@@ -551,6 +530,7 @@ EndProcedure
 
           EndSelect  ;YPos           
           Drawgadget()
+
         EndIf
           
       EndSelect
@@ -602,8 +582,17 @@ EndProcedure
 
     SetCurrentGadgetID(ThisGadget)
     
+    ;Get background colour where gadget will be drawn
+    StartDrawing(WindowOutput(ThisWindow))
+      MyGadgetArray.MyGadget(CurrentGadget)\BackColour = Point(x, y)
+    StopDrawing()
+    
     MyGadgetArray.MyGadget(CurrentGadget)\BackColour = GetWindowBackgroundColor(WindowID(ThisWindow))
-    MyGadgetArray.MyGadget(CurrentGadget)\BackColour = RGB2RGBA(MyGadgetArray.MyGadget(CurrentGadget)\BackColour)
+
+    ;Set Colour Of Canvas To Background
+    StartDrawing(CanvasOutput(ThisGadget))
+      Box(0, 0, OutputWidth(), OutputHeight(), MyGadgetArray.MyGadget(CurrentGadget)\BackColour)
+    StopDrawing()
     
     ;Save Settings For This Gadget
     MyGadgetArray(CurrentGadget)\Vertical = Vertical  
@@ -619,7 +608,7 @@ EndProcedure
     MyGadgetArray(CurrentGadget)\ArrowColour = RGBA(255,255,255,255)
     MyGadgetArray(CurrentGadget)\imgTrack = CreateTrack()
     MyGadgetArray(CurrentGadget)\imgSlider = CreateSlider()
-
+    
     ;Draw the actual gadget
     DrawGadget()
     
@@ -629,7 +618,7 @@ EndProcedure
     
 EndModule
 ; IDE Options = PureBasic 5.51 (Windows - x64)
-; CursorPosition = 604
-; FirstLine = 389
-; Folding = 2nAo+
+; CursorPosition = 475
+; FirstLine = 249
+; Folding = F4Aq
 ; EnableXP

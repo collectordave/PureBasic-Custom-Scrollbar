@@ -7,20 +7,24 @@
   <section name="data">
     <explorer view="..\..\..\Program Files (x86)\PureBasic\Examples\" pattern="0"/>
     <log show="1"/>
-    <lastopen date="2017-01-06 08:53" user="DaveSandy" host="MEDIAPC"/>
+    <lastopen date="2017-01-09 18:33" user="DaveSandy" host="MEDIAPC"/>
   </section>
   <section name="files">
-    <file name="winMain.pb">
+    <file name="CGScrollBar00.pbi">
       <config load="0" scan="1" panel="1" warn="1" lastopen="1" panelstate="+"/>
-      <fingerprint md5="9ae92c585a15218ae4f4dcb47a9481ca"/>
+      <fingerprint md5="c2256fc27b33ffeb7c1fb048152f6fa7"/>
     </file>
     <file name="CGScrollBar01.pbi">
       <config load="0" scan="1" panel="1" warn="1" lastopen="1" panelstate="+"/>
-      <fingerprint md5="f67b14a120baef941e82122ce84025a0"/>
+      <fingerprint md5="434ba5d930d66b110ddf00cfcf2b3b9b"/>
     </file>
-    <file name="CGScrollBar00.pbi">
+    <file name="CGScrollBar02.pbi">
       <config load="0" scan="1" panel="1" warn="1" lastopen="1" panelstate="+"/>
-      <fingerprint md5="a932c03e753b35d8993d723b31a2ce2b"/>
+      <fingerprint md5="892e9308857f073a054902625b9ec8de"/>
+    </file>
+    <file name="winMain.pb">
+      <config load="0" scan="1" panel="1" warn="1" lastopen="1" panelstate="+"/>
+      <fingerprint md5="63f55752bbfdd257e096d0facd7823f7"/>
     </file>
   </section>
   <section name="targets">
